@@ -1,0 +1,5 @@
+# Category order for docs + sidebar (folder names under the Go module root).
+# Lines are processed top to bottom; any folder not listed is appended after, A–Z.
+
+recursion-backtracking
+linkedlist
