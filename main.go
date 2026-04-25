@@ -21,6 +21,7 @@ const (
 
 func main() {
 	var (
+		readmeOnly = flag.Bool("readme-only", false, "Only write readme table; run from docgen cwd (category_order.txt). Does not touch docs/site.")
 		codeDir    = flag.String("code", envOr("DOCGEN_CODE", "../dsa"), "Path to the DSA Go module root (category subdirs, e.g. linkedlist/)")
 		docsDir    = flag.String("docs", envOr("DOCGEN_DOCS", "../dsa-pavilion/docs"), "Output directory for generated .mdx")
 		sidebar    = flag.String("sidebar", envOr("DOCGEN_SIDEBAR", "../dsa-pavilion/sidebars.js"), "Output path for sidebars.js")
@@ -28,6 +29,25 @@ func main() {
 		sitePrefix = flag.String("base", envOr("DOCGEN_BASE", "/dsa-pavilion/"), "Site base path for internal doc links (must end with /)")
 	)
 	flag.Parse()
+
+	if *readmeOnly {
+		codeDirAbs, err := filepath.Abs(*codeDir)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "code path:", err)
+			os.Exit(1)
+		}
+		readmeAbs, err := filepath.Abs(*readmeOut)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "readme path:", err)
+			os.Exit(1)
+		}
+		if err := renderer.RenderReadme(codeDirAbs, categoryOrderFile, readmeAbs); err != nil {
+			fmt.Fprintln(os.Stderr, "readme:", err)
+			os.Exit(1)
+		}
+		fmt.Println("✅ readme.md generated")
+		return
+	}
 
 	if *sitePrefix == "" {
 		*sitePrefix = "/"
