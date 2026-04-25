@@ -21,12 +21,15 @@ const (
 
 func main() {
 	var (
-		readmeOnly = flag.Bool("readme-only", false, "Only write readme table; run from docgen cwd (category_order.txt). Does not touch docs/site.")
-		codeDir    = flag.String("code", envOr("DOCGEN_CODE", "../dsa"), "Path to the DSA Go module root (category subdirs, e.g. linkedlist/)")
-		docsDir    = flag.String("docs", envOr("DOCGEN_DOCS", "../dsa-pavilion/docs"), "Output directory for generated .mdx")
-		sidebar    = flag.String("sidebar", envOr("DOCGEN_SIDEBAR", "../dsa-pavilion/sidebars.js"), "Output path for sidebars.js")
-		readmeOut  = flag.String("readme", envOr("DOCGEN_README", "../dsa/readme.md"), "Output path for generated readme (code repo index table)")
-		sitePrefix = flag.String("base", envOr("DOCGEN_BASE", "/dsa-pavilion/"), "Site base path for internal doc links (must end with /)")
+		readmeOnly       = flag.Bool("readme-only", false, "Only write readme table; run from docgen cwd (category_order.txt). Does not touch docs/site.")
+		codeDir          = flag.String("code", envOr("DOCGEN_CODE", "../dsa"), "Path to the DSA Go module root (category subdirs, e.g. linkedlist/)")
+		docsDir          = flag.String("docs", envOr("DOCGEN_DOCS", "../dsa-pavilion/docs"), "Output directory for generated .mdx")
+		sidebar          = flag.String("sidebar", envOr("DOCGEN_SIDEBAR", "../dsa-pavilion/sidebars.js"), "Output path for sidebars.js")
+		readmeOut        = flag.String("readme", envOr("DOCGEN_README", "../dsa/readme.md"), "Output path for generated readme (code repo index table)")
+		sitePrefix       = flag.String("base", envOr("DOCGEN_BASE", "/dsa-pavilion/"), "Site base path for internal doc links (must end with /)")
+		githubRepo       = flag.String("github-repo", envOr("DOCGEN_GITHUB_REPO", "https://github.com/ghrushneshr25/dsa"), "DSA repo URL (no trailing slash) for navbar source links")
+		githubBranch     = flag.String("github-branch", envOr("DOCGEN_GITHUB_BRANCH", "master"), "Branch name for GitHub blob/tree links")
+		githubRoutesPath = flag.String("github-routes", envOr("DOCGEN_GITHUB_ROUTES", "../dsa-pavilion/src/data/dsaGithubRoutes.json"), "Output JSON: doc id -> GitHub URL")
 	)
 	flag.Parse()
 
@@ -86,6 +89,12 @@ func main() {
 	}
 
 	var sidebarData []renderer.SidebarCategory
+
+	repoRoot := strings.TrimSuffix(*githubRepo, "/")
+	branch := *githubBranch
+	githubRoutes := map[string]string{
+		"index": repoRoot,
+	}
 
 	categories, err := os.ReadDir(codeDirAbs)
 	if err != nil {
@@ -200,6 +209,8 @@ func main() {
 			})
 
 			docID := catName + "/" + slug
+			relSource := filepath.ToSlash(filepath.Join(catName, filepath.Base(file)))
+			githubRoutes[docID] = repoRoot + "/blob/" + branch + "/" + relSource
 
 			entry := renderer.IndexItem{
 				Title:      title,
@@ -224,6 +235,8 @@ func main() {
 			Path:         filepath.Join(docPath, "index.mdx"),
 		})
 
+		githubRoutes[catName+"/index"] = repoRoot + "/tree/" + branch + "/" + catName
+
 		sidebarData = append(sidebarData, renderer.SidebarCategory{
 			Name:     cat.Name,
 			Slug:     catName,
@@ -237,6 +250,16 @@ func main() {
 
 	if err := renderer.RenderReadme(codeDirAbs, categoryOrderFile, readmeAbs); err != nil {
 		fmt.Fprintln(os.Stderr, "readme:", err)
+		os.Exit(1)
+	}
+
+	routesAbs, err := filepath.Abs(*githubRoutesPath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "github-routes path:", err)
+		os.Exit(1)
+	}
+	if err := renderer.WriteGithubRoutes(routesAbs, githubRoutes); err != nil {
+		fmt.Fprintln(os.Stderr, "github routes:", err)
 		os.Exit(1)
 	}
 
