@@ -158,19 +158,46 @@ func main() {
 			var code string
 			var structs []parser.StructInfo
 			var conceptDesc, conceptStructIntro, conceptOpsMD, operationsCode string
+			var opSubs []renderer.OperationSubsection
 
 			if docType == "concept" {
 				cdoc, _ := parser.ParseConceptDocBlock(file)
+				inline, _ := parser.ParseConceptInlineFromFile(file)
 				structs, _ = parser.ExtractStructs(file)
 				if cdoc != nil {
 					conceptDesc = cdoc.Description
 					conceptStructIntro = cdoc.StructureIntro
 					conceptOpsMD = cdoc.Operations
 					for i := range structs {
+						if d, ok := inline.StructDoc[structs[i].Name]; ok {
+							structs[i].Doc = d
+							continue
+						}
 						for k, v := range cdoc.StructureSubsections {
 							if strings.EqualFold(strings.TrimSpace(k), structs[i].Name) {
 								structs[i].Doc = v
 								break
+							}
+						}
+					}
+					// Prefer in-file // @operation prose; else leading block @subsection: Operations.
+					opProseList := cdoc.OperationsSubsections
+					if len(inline.Operations) > 0 {
+						opProseList = inline.Operations
+					}
+					if len(opProseList) > 0 {
+						codeBySection, err := parser.ExtractOperationCodeBySection(file)
+						if err == nil {
+							for _, s := range opProseList {
+								code := ""
+								if codeBySection != nil {
+									code = codeBySection[parser.NormalizeOpTitle(s.Title)]
+								}
+								opSubs = append(opSubs, renderer.OperationSubsection{Title: s.Title, Prose: s.Prose, Code: code})
+							}
+						} else {
+							for _, s := range opProseList {
+								opSubs = append(opSubs, renderer.OperationSubsection{Title: s.Title, Prose: s.Prose, Code: ""})
 							}
 						}
 					}
@@ -205,6 +232,7 @@ func main() {
 				ConceptStructureIntro: conceptStructIntro,
 				ConceptOperationsMD:   conceptOpsMD,
 				OperationsCode:        operationsCode,
+				OperationSubsections:  opSubs,
 				Output:                outFile,
 			})
 

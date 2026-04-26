@@ -40,7 +40,18 @@ title: {{.Title}}
 
 {{end}}
 
-{{if .ConceptOperationsMD}}
+{{if .OperationSubsections}}
+## Operations
+{{range .OperationSubsections}}
+### {{.Title}}
+{{.Prose}}
+
+```go
+{{.Code}}
+```
+
+{{end}}
+{{else if .ConceptOperationsMD}}
 ## Operations
 
 {{.ConceptOperationsMD}}
@@ -48,7 +59,7 @@ title: {{.Title}}
 ## Operations
 
 {{end}}
-{{if .OperationsCode}}
+{{if and (eq (len .OperationSubsections) 0) .OperationsCode}}
 ```go
 {{.OperationsCode}}
 ```

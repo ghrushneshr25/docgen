@@ -5,19 +5,28 @@ import (
 	"strings"
 )
 
-// ConceptDoc is parsed prose from a concept file's leading /* */ block.
-type ConceptDoc struct {
-	Description          string
-	StructureIntro       string
-	StructureSubsections map[string]string // @subsection title -> prose (keys match type names)
-	Operations           string
+// OperationProse is one @subsection under @section: Operations (prose only; code comes from the .go file).
+type OperationProse struct {
+	Title string
+	Prose string
 }
 
-// ParseConceptDocBlock parses the doc block. For @section: Structure, text before the first
-// @subsection becomes StructureIntro; each @subsection body is stored by title (no duplicate
-// ### headings) so the template can render ### Name, prose, then struct code once.
+// ConceptDoc is parsed prose from a concept file's leading /* */ block.
+type ConceptDoc struct {
+	Description            string
+	StructureIntro         string
+	StructureSubsections   map[string]string // @subsection title -> prose (keys match type names)
+	Operations             string              // full markdown (### headings + prose) for legacy template path
+	OperationsSubsections  []OperationProse    // ordered; used to interleave with per-section Go code
+}
+
+// ParseConceptDocBlock parses the leading /* */ block. For @section: Structure, text before
+// the first @subsection becomes StructureIntro; each @subsection body is stored by title
+// (keys match type names) for ### headings + struct code. If Structure/Operations are empty
+// in the block, use ParseConceptInlineFromFile to take prose from // @structure, // @description,
+// and // @operation in the .go file.
 func ParseConceptDocBlock(path string) (*ConceptDoc, error) {
-	out := &ConceptDoc{StructureSubsections: make(map[string]string)}
+	out := &ConceptDoc{StructureSubsections: make(map[string]string), OperationsSubsections: nil}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -112,6 +121,9 @@ func ParseConceptDocBlock(path string) (*ConceptDoc, error) {
 				lastHeading = sub
 				continue
 			}
+			if current == "operations" {
+				appendOpSubsection(out, lastHeading, buf)
+			}
 			flushTo(targetFor())
 			tb := targetFor()
 			if tb != nil {
@@ -128,6 +140,9 @@ func ParseConceptDocBlock(path string) (*ConceptDoc, error) {
 	if current == "structure" {
 		flushStructureBuf()
 	} else {
+		if current == "operations" {
+			appendOpSubsection(out, lastHeading, buf)
+		}
 		flushTo(targetFor())
 	}
 
@@ -135,6 +150,20 @@ func ParseConceptDocBlock(path string) (*ConceptDoc, error) {
 	out.StructureIntro = strings.TrimSpace(structIntro.String())
 	out.Operations = strings.TrimSpace(opsB.String())
 	return out, nil
+}
+
+// appendOpSubsection records prose for the subsection that ends at the next @subsection or EOF
+// (lastHeading and buf are from before flush). Skips the gap after @section: Operations before
+// the first @subsection, when lastHeading is still "Operations".
+func appendOpSubsection(out *ConceptDoc, lastHeading string, buf []string) {
+	if lastHeading == "" || lastHeading == "Operations" {
+		return
+	}
+	s := ""
+	if len(buf) > 0 {
+		s = strings.TrimSpace(formattedBodyString(buf, lastHeading))
+	}
+	out.OperationsSubsections = append(out.OperationsSubsections, OperationProse{Title: lastHeading, Prose: s})
 }
 
 func writeFormattedBody(target *strings.Builder, buf []string, lastHeading string) {
