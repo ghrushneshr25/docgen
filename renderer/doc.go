@@ -11,7 +11,10 @@ type OperationSubsection struct {
 
 type Doc struct {
 	Title    string
-	Type     string
+	// SidebarPosition is 1-based order in the category sidebar (matches sort by
+	// leading digits in Title, then title text).
+	SidebarPosition int
+	Type            string
 	Sections string // problems: full ParseSections markdown
 	Code     string // problems: full implementation; concepts: unused (use OperationsCode)
 	Subtests []parser.SubtestInfo // each t.Run name, @desc, and code

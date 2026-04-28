@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"docgen/parser"
@@ -120,7 +119,6 @@ func main() {
 			fmt.Fprintln(os.Stderr, "glob:", err)
 			os.Exit(1)
 		}
-		sort.Strings(files)
 		// Skip repo folders that are not doc categories (e.g. scripts, .github)
 		if len(files) == 0 {
 			continue
@@ -135,24 +133,14 @@ func main() {
 		var problemItems []renderer.IndexItem
 		cat := renderer.SidebarCategory{Name: utils.FormatTitle(catName)}
 
-		for _, file := range files {
-			if utils.IsTestFile(file) {
-				continue
-			}
+		for i, src := range parser.OrderedSources(files) {
+			file := src.Path
+			meta := src.Meta
+			docType := src.DocType
+			title := src.Title
+			sidebarPosition := i + 1
 
-			meta := parser.ParseMetadata(file)
-			docType := meta["type"]
-			if docType == "" {
-				docType = "problem"
-			}
-
-			title := parser.ResolveTitle(meta, docType)
-			if title == "" {
-				fmt.Fprintln(os.Stderr, "skip (add @problem: or @title:):", file)
-				continue
-			}
-
-			slug := utils.Slugify(title)
+			slug := utils.DocSlug(title)
 
 			var sections string
 			var code string
@@ -221,6 +209,7 @@ func main() {
 
 			renderer.RenderDoc(renderer.Doc{
 				Title:                 title,
+				SidebarPosition:       sidebarPosition,
 				Type:                  docType,
 				Sections:              sections,
 				Code:                  code,

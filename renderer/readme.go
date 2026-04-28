@@ -42,7 +42,6 @@ func RenderReadme(codeDir, categoryOrderFile, outPath string) error {
 		if len(list) == 0 {
 			continue
 		}
-		utils.SortSourcePathsByBase(list)
 
 		header := utils.FormatTitle(catName)
 		b.WriteString("## 📂 ")
@@ -51,8 +50,9 @@ func RenderReadme(codeDir, categoryOrderFile, outPath string) error {
 		b.WriteString("| Problem | Difficulty | Tags | Description | Code | Tests |\n")
 		b.WriteString("|--------|------------|------|-------------|------|-------|\n")
 
-		for _, file := range list {
-			meta := parser.ParseMetadata(file)
+		for _, src := range parser.OrderedSources(list) {
+			file := src.Path
+			meta := src.Meta
 			stem := strings.TrimSuffix(filepath.Base(file), ".go")
 			problemName := meta["problem"]
 			if problemName == "" {
