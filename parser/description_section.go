@@ -48,8 +48,5 @@ func ExtractDescriptionSection(filePath string) string {
 	}
 	out := strings.Join(parts, " ")
 	out = strings.Join(strings.Fields(out), " ")
-	if len(out) > 120 {
-		out = out[:120]
-	}
 	return out
 }
