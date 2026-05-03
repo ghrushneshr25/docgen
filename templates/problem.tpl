@@ -18,6 +18,31 @@ sidebar_position: {{.SidebarPosition}}
 
 ---
 
+{{if .ProblemApproaches}}
+{{.ProblemPreamble}}
+
+{{range $i, $a := .ProblemApproaches}}{{if gt $i 0}}
+
+---
+
+{{end}}{{$a.Markdown}}
+
+---
+
+## 🧩 Solution (Go)
+
+```go
+{{$a.Code}}
+```
+
+{{end}}
+{{if .ProblemSummary}}
+
+---
+
+{{.ProblemSummary}}
+{{end}}
+{{else}}
 {{.Sections}}
 
 ---
@@ -28,6 +53,7 @@ sidebar_position: {{.SidebarPosition}}
 {{.Code}}
 ```
 
+{{end}}
 {{if .HasTests}}
 
 ---

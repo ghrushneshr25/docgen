@@ -13,6 +13,9 @@ func ParseMetadata(file string) map[string]string {
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "/*") || strings.HasPrefix(line, "package ") {
+			break
+		}
 
 		if strings.HasPrefix(line, "//") {
 			line = strings.TrimPrefix(line, "//")

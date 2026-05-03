@@ -155,6 +155,43 @@ func goSectionsFromBanners(lines []string) (sections []struct{ title, key string
 	return sections
 }
 
+// OperationDirectiveCount returns how many // @operation directives appear in the file (in order).
+func OperationDirectiveCount(path string) (int, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, err
+	}
+	lines := strings.Split(string(data), "\n")
+	return len(goSectionsFromOperationDirectives(lines)), nil
+}
+
+// OperationSnippet is one gofmt'd function under // @operation, in source order.
+type OperationSnippet struct {
+	Title  string
+	Key    string
+	Source string
+}
+
+// ExtractOperationCodeOrdered returns function source for each // @operation in file order.
+func ExtractOperationCodeOrdered(path string) ([]OperationSnippet, error) {
+	byKey, err := ExtractOperationCodeBySection(path)
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	lines := strings.Split(string(data), "\n")
+	ranges := goSectionsFromOperationDirectives(lines)
+	out := make([]OperationSnippet, 0, len(ranges))
+	for _, r := range ranges {
+		src := strings.TrimSpace(byKey[r.key])
+		out = append(out, OperationSnippet{Title: r.title, Key: r.key, Source: src})
+	}
+	return out, nil
+}
+
 func sectionKeyForLine(sections []struct{ title, key string; start, end int }, line1Based int) string {
 	line0 := line1Based - 1
 	var key string

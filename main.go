@@ -144,6 +144,9 @@ func main() {
 
 			var sections string
 			var code string
+			var problemPreamble string
+			var problemApproaches []renderer.ProblemApproach
+			var problemSummary string
 			var structs []parser.StructInfo
 			var conceptDesc, conceptStructIntro, conceptOpsMD, operationsCode string
 			var opSubs []renderer.OperationSubsection
@@ -193,8 +196,29 @@ func main() {
 				funcs, _ := parser.ExtractFunctions(file)
 				operationsCode = strings.Join(funcs, "\n\n")
 			} else {
-				sections = parser.ParseSections(file)
-				code = parser.ExtractCode(file)
+				preamble, paDocs, summary, multi := parser.ParseProblemMultiApproach(file)
+				if multi {
+					snippets, err := parser.ExtractOperationCodeOrdered(file)
+					if err == nil && len(snippets) == len(paDocs) {
+						problemPreamble = preamble
+						problemSummary = summary
+						prefix := parser.ExtractPackageImportPreamble(file)
+						for i := range paDocs {
+							code := snippets[i].Source
+							if prefix != "" && code != "" {
+								code = parser.FormatGoSource(prefix + "\n\n" + code)
+							}
+							problemApproaches = append(problemApproaches, renderer.ProblemApproach{
+								Markdown: paDocs[i].Markdown,
+								Code:     code,
+							})
+						}
+					}
+				}
+				if len(problemApproaches) == 0 {
+					sections = parser.ParseSections(file)
+					code = parser.ExtractCode(file)
+				}
 			}
 
 			var subtests []parser.SubtestInfo
@@ -213,6 +237,9 @@ func main() {
 				Type:                  docType,
 				Sections:              sections,
 				Code:                  code,
+				ProblemPreamble:       problemPreamble,
+				ProblemApproaches:     problemApproaches,
+				ProblemSummary:        problemSummary,
 				Subtests:              subtests,
 				HasTests:              hasTests,
 				Meta:                  meta,
